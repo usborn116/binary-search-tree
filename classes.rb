@@ -1,4 +1,16 @@
+module Printer
+
+  def pretty_print(node = self.root, prefix = '', is_left = true)
+    pretty_print(node.right, "#{prefix}#{is_left ? '│   ' : '    '}", false) if node.right
+    puts "#{prefix}#{is_left ? '└── ' : '┌── '}#{node.data}"
+    pretty_print(node.left, "#{prefix}#{is_left ? '    ' : '│   '}", true) if node.left
+  end
+
+end
+
 class Node
+  include Comparable
+
   attr_accessor :left, :right, :data
 
   def initialize(data)
@@ -6,9 +18,11 @@ class Node
     @left = nil
     @right = nil
   end
+  
 end
 
 class Tree
+  include Printer
   attr_accessor :root, :data
 
   def initialize(array)
@@ -27,33 +41,25 @@ class Tree
 
   def insert(value, node = root)
     return nil if value == node.data
-    if value < node.data
-      node.left.nil? ? node.left = Node.new(value) : insert(value, node.left)
-    else
-      node.right.nil? ? node.right = Node.new(value) : insert(value, node.right)
-    end
+    node.left = Node.new(value) if value < node.data && node.left.nil?
+    node.right = Node.new(value) if value > node.data && node.right.nil?
+    insert(value, node.left ? node.left : node.right)
   end
 
   def delete(value, node = root)
     return node if node.nil?
-    if value < node.data
-      node.left = delete(value, node.left)
-    elsif value > node.data
-      node.right = delete(value, node.right)
-    else
-      return node.right if node.left.nil?
-      return node.left if node.right.nil?
-      # if node has two children
-      leftmost_node = leftmost_leaf(node.right)
-      p node.data = leftmost_node.data
-      p node.right = delete(leftmost_node.data, node.right)
-    end
+    node.left = delete(value, node.left) if value < node.data
+    node.right = delete(value, node.right) if value > node.data
+    return node.right if node.left.nil?
+    return node.left if node.right.nil?
+    leftmost_node = leftmost_leaf(node.right)
+    node.data = leftmost_node.data
+    node.right = delete(leftmost_node.data, node.right)
     node
   end
 
   def leftmost_leaf(node)
     node = node.left until node.left.nil?
-    p node
   end
 
   def find(value, node = root)
@@ -70,7 +76,7 @@ class Tree
       queue << todo.right unless todo.right.nil?
       yield(todo) if block_given?
     end
-    result
+    print result
   end
 
   def preorder(node = root)
@@ -95,9 +101,8 @@ class Tree
   end
 
   def height(node = root)
-    unless node.nil? || node == root
-      node = (node.instance_of?(Node) ? find(node.data) : find(node))
-    end
+    return -1 if node.nil?
+    node = (node.instance_of?(Node) ? find(node.data) : find(node)) unless node == root
     return -1 if node.nil?
     [height(node.left), height(node.right)].max + 1
   end
@@ -105,15 +110,8 @@ class Tree
   def depth(node = root, parent = root, edges = 0)
     return 0 if node == parent
     return -1 if parent.nil?
-    if node < parent.data
-      edges += 1
-      depth(node, parent.left, edges)
-    elsif node > parent.data
-      edges += 1
-      depth(node, parent.right, edges)
-    else
-      edges
-    end
+    node < parent.data ? depth(node, parent.left, edges += 1) : depth(node, parent.right, edges += 1)
+    edges
   end
 
   def balanced?(node = root)
@@ -121,18 +119,11 @@ class Tree
     left_height = height(node.left)
     right_height = height(node.right)
     return true if (left_height - right_height).abs <= 1 && balanced?(node.left) && balanced?(node.right)
-    false
   end
 
   def rebalance
     self.data = inorder_array
     self.root = build_tree(data)
-  end
-
-  def pretty_print(node = root, prefix = '', is_left = true)
-    pretty_print(node.right, "#{prefix}#{is_left ? '│   ' : '    '}", false) if node.right
-    puts "#{prefix}#{is_left ? '└── ' : '┌── '}#{node.data}"
-    pretty_print(node.left, "#{prefix}#{is_left ? '    ' : '│   '}", true) if node.left
   end
 
   def inorder_array(node = root, array = [])
@@ -143,49 +134,9 @@ class Tree
     end
     array
   end
+
+  def to_s
+    pretty_print
+  end
+
 end
-
-
-array = Array.new(15) { rand(1..100) }
-bst = Tree.new(array)
-
-bst.pretty_print
-
-p bst.balanced?
-
-puts 'Level order traversal: '
-puts bst.level_order
-
-puts 'Preorder traversal: '
-puts bst.preorder
-
-puts 'Inorder traversal: '
-puts bst.inorder
-
-puts 'Postorder traversal: '
-puts bst.postorder
-
-10.times do
-  a = rand(100..200)
-  bst.insert(a)
-  puts "Inserted #{a}."
-end
-
-p bst.balanced?
-
-p "Rebalancing"
-bst.rebalance
-
-p bst.balanced?
-
-puts 'Level order traversal: '
-puts bst.level_order
-
-puts 'Preorder traversal: '
-puts bst.preorder
-
-puts 'Inorder traversal: '
-puts bst.inorder
-
-puts 'Postorder traversal: '
-puts bst.postorder
